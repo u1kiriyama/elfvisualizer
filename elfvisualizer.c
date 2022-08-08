@@ -56,12 +56,7 @@ int main(int argc, char *argv[])
       .text は1440byte目になっており、セクションヘッダテーブルの開始位置と一致
       以降64byteごとになっている。
     */
-    printf("\taddr : %lu\n", shdr);
-    printf("\tsh_name : %lu\n", shdr->sh_name);
-    printf("\tsh_offset : %lu\n", shdr->sh_offset);
-    printf("\tsh_size : %lu\n", shdr->sh_size);
-    printf("\tsh_info : %lu\n", shdr->sh_info);
-    printf("\tsh_entsize : %lu\n", shdr->sh_entsize);
+    printf("\t%lu + %lu = %lu\n", shdr->sh_offset, shdr->sh_size, shdr->sh_offset+shdr->sh_size);
   }
 
   munmap(head, sb.st_size);

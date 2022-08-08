@@ -107,6 +107,99 @@ static int elfdump(char *head)
     return (0);
 }
 
+Elf64_Shdr* bubblesort(char *head, Elf64_Shdr *shdr_arr[])
+{
+    Elf64_Ehdr *ehdr;
+    Elf64_Shdr *shdr, *shstr;
+    Elf64_Shdr *tmp;
+
+    ehdr = (Elf64_Ehdr *)head;
+    shstr = (Elf64_Shdr *)(head + ehdr->e_shoff + ehdr->e_shentsize * ehdr->e_shstrndx);
+    //Elf64_Shdr *shdr_arr[ehdr->e_shnum]; // offset順などで並べ替えられるように各セクションヘッダへのポインタの配列を定義。
+    
+    printf("\n");
+    printf("bubble sort\n");
+
+    for (int i  = 0; i < ehdr->e_shnum-1; i++) {
+        for (int j  = 0; j < ehdr->e_shnum-1; j++) {
+            if (shdr_arr[j]->sh_offset > shdr_arr[j+1]->sh_offset) {
+                tmp = shdr_arr[j];
+                shdr_arr[j] = shdr_arr[j+1];
+                shdr_arr[j+1] = tmp;
+                }
+        }
+    }
+
+/*
+    for (int i = 0; i < ehdr->e_shnum; i++) {
+        printf("%s\n", (char *)(head + shstr->sh_offset + shdr_arr[i]->sh_name));
+        printf("%lu\n",shdr_arr[i]->sh_offset);
+    }
+*/
+    return *shdr_arr;
+}
+
+int makeParts(char c, int n, char array[n]){
+    char side;
+    char inner;
+
+    if (c == 'W') {
+        side = '+';
+        inner = '-';
+    }else if (c == 'E') {
+        side = '|';
+        inner  = ' ';
+    }else {
+        side = '*';
+        inner ='*';
+    }
+
+    array[0] = side;
+    for (int i = 1; i < n-2; i++) {
+        array[i] = inner;
+    }
+    array[n-2] = side;
+    array[n-1] = '\0';
+
+    return (0);
+}
+
+int makeFrame(char *head, Elf64_Shdr *shdr_arr[])
+{
+    Elf64_Ehdr *ehdr;
+    Elf64_Shdr *shdr, *shstr;
+    int horizontal = 31;
+    int vertical;
+
+    ehdr = (Elf64_Ehdr *)head;
+    shstr = (Elf64_Shdr *)(head + ehdr->e_shoff + ehdr->e_shentsize * ehdr->e_shstrndx);
+    vertical = (ehdr->e_shnum) * 2 + 1;
+    printf("\n");
+
+    char parts[vertical][horizontal];
+    for (int i = 0; i < ehdr->e_shnum; i++) {
+        makeParts('W', horizontal, parts[2*i]);
+        makeParts('E', horizontal, parts[2*i+1]);
+        char* sname = (char *)(head + shstr->sh_offset + shdr_arr[i]->sh_name);
+        memcpy(&parts[2*i+1][2], sname, strlen(sname));
+    }
+    makeParts('W', horizontal, parts[vertical-1]);
+
+    for (int i = 0; i < ehdr->e_shnum; i++) {
+        printf("%03d ", 2*i);
+        printf("%05lu ", shdr_arr[i]->sh_offset);
+        printf("%s\n", parts[2*i]);
+        printf("%03d ", 2*i+1);
+        printf("      ");
+        printf("%s\n", parts[2*i+1]);
+    }
+    printf("%03d ", 2*ehdr->e_shnum);
+    printf("      ");
+    printf("%s\n", parts[vertical-1]);
+    printf("\n");
+
+}
+
 static int elfvisualizer(char *head)
 {
     Elf64_Ehdr *ehdr;
@@ -120,6 +213,24 @@ static int elfvisualizer(char *head)
     ehdr = (Elf64_Ehdr *)head;
 
     printf("\tnumber of sections : %d\n", ehdr->e_shnum);
+
+    Elf64_Shdr *shdr_arr[ehdr->e_shnum]; // offset順などで並べ替えられるように各セクションヘッダへのポインタの配列を定義。
+    for (i = 0; i < ehdr->e_shnum; i++) {
+        shdr = (Elf64_Shdr *)(head + ehdr->e_shoff + ehdr->e_shentsize * i);
+        shdr_arr[i] = shdr;
+    }
+    
+    *shdr_arr = bubblesort(head, shdr_arr);    
+    
+    shstr = (Elf64_Shdr *)(head + ehdr->e_shoff + ehdr->e_shentsize * ehdr->e_shstrndx);
+    for (i = 0; i < ehdr->e_shnum; i++) {
+        printf("%s\n", (char *)(head + shstr->sh_offset + shdr_arr[i]->sh_name));
+        printf("%lu + %lu = %lu\n",
+                shdr_arr[i]->sh_offset, shdr_arr[i]->sh_size, 
+                shdr_arr[i]->sh_offset + shdr_arr[i]->sh_size);
+    }
+
+    makeFrame(head, shdr_arr);
 
     return (0);
 }
